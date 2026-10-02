@@ -1,4 +1,4 @@
-import { C, FONT, HEADER_H, frame, txt, fit } from './theme.js';
+import { C, FONT, HEADER_H, frame, txt, fit, wrap } from './theme.js';
 
 const hhmm = d => new Date(d).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
 const DIR = { in: ['受信', C.good], out: ['発信', C.cyan], missed: ['不在', C.bad] };
@@ -93,6 +93,32 @@ export const panelDefs = [
         txt(ctx, k, 560, 150 + i * 120, { size: 24, color: C.sub });
         txt(ctx, v, 560, 200 + i * 120, { size: 52, color: col, weight: 600 });
       });
+    },
+  },
+  {
+    id: 'assistant', w: 0.46, h: 0.34,
+    draw(ctx, p, s, a) {
+      const as = s.assistant;
+      frame(ctx, p, 'ASSISTANT');
+      txt(ctx, as.conn === 'online' ? '● ' + as.info : '○ OFFLINE', p.cw - 100, 56,
+        { size: 22, align: 'right', color: as.conn === 'online' ? C.good : C.bad });
+      // transcript: newest lines at the bottom, wrapped
+      ctx.font = `400 34px ${FONT}`;
+      const lines = [];
+      for (const e of as.log) for (const l of wrap(ctx, e.text, 880)) lines.push([l, e.who === 'user' ? C.cyan : C.text]);
+      const maxLines = as.pending ? 4 : 6;
+      lines.slice(-maxLines).forEach(([l, col], i) => txt(ctx, l, 44, 140 + i * 46, { size: 34, color: col }));
+      if (!as.log.length) txt(ctx, '「田中に電話して」「未読を読んで」', 44, 150, { size: 32, color: C.sub });
+      if (as.pending) {
+        ctx.font = `600 32px ${FONT}`;
+        txt(ctx, fit(ctx, as.pending.label, 920), 44, 372, { size: 32, color: C.warn, weight: 600 });
+        p.button(ctx, 'ok', '実行', 44, 395, 440, 90, () => a.confirmPending(), { color: C.good, size: 40 });
+        p.button(ctx, 'no', '取消', 540, 395, 440, 90, () => a.cancelPending(), { color: C.bad, size: 40 });
+      }
+      const busy = as.status !== 'idle';
+      const label = { idle: '● 話しかける', listening: '● 聞いています…（終了でタップ）', thinking: '考え中…' }[as.status];
+      p.button(ctx, 'mic', label, 44, 560, 936, 150, () => a.toggleMic(),
+        { color: as.status === 'listening' ? C.bad : busy ? C.sub : C.cyan, size: 48 });
     },
   },
   {

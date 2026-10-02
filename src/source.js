@@ -14,6 +14,7 @@ export function createMockSource() {
   const s = {
     now: new Date(),
     selected: null,
+    contacts: Object.entries(CONTACTS).map(([number, name]) => ({ name, number })),
     phone: {
       dial: '', active: null, incoming: null,
       recent: [
@@ -58,8 +59,8 @@ export function createMockSource() {
       const m = s.messages.find(m => m.id === id); if (m) m.read = true;
       emit();
     },
-    reply(text) {
-      const m = s.messages.find(m => m.id === s.selected); if (!m) return;
+    reply(text, id = s.selected) {
+      const m = s.messages.find(m => m.id === id); if (!m) return;
       s.messages.unshift({ id: nextId++, app: m.app, from: 'あなた → ' + m.from, text, t: Date.now(), read: true, own: true });
       s.selected = null; emit();
     },

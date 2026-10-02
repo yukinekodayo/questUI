@@ -12,6 +12,7 @@
   #enter{font:600 18px "Noto Sans JP",sans-serif;letter-spacing:.2em;color:#4de8ff;background:rgba(6,20,34,.8);
     border:1.5px solid #4de8ff;border-radius:8px;padding:14px 34px;cursor:pointer}
   #enter:hover{background:rgba(77,232,255,.25)}
+  #cmd{margin-top:10px;width:340px;padding:8px 12px;border-radius:6px;border:1px solid #4de8ff55;background:#06141f;color:#d6f6ff;font:14px sans-serif}
   #msg{margin-top:10px;font-size:12px;color:#7fb4c4;max-width:80vw}
 </style>
 <script type="importmap">
@@ -19,7 +20,8 @@
 </script>
 </head>
 <body>
-<div id="ui"><button id="enter">ENTER HUD</button><div id="msg"></div></div>
+<div id="ui"><button id="enter">ENTER HUD</button><div id="msg"></div>
+<input id="cmd" placeholder="テキストで話しかける（デスクトップ用・Enter）" autocomplete="off"></div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

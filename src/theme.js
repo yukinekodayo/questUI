@@ -36,3 +36,12 @@ export function frame(ctx, p, title) {
   ctx.strokeStyle = 'rgba(77,232,255,0.3)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(30, HEADER_H); ctx.lineTo(cw - 30, HEADER_H); ctx.stroke();
 }
+
+// Character-wise wrapping (works for Japanese, which has no spaces)
+export function wrap(ctx, s, maxW) {
+  const lines = []; let cur = '';
+  for (const ch of s) {
+    if (ctx.measureText(cur + ch).width > maxW) { lines.push(cur); cur = ch; } else cur += ch;
+  }
+  return cur ? [...lines, cur] : lines;
+}

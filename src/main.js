@@ -4,6 +4,7 @@ import { Panel } from './panel.js';
 import { panelDefs } from './panels.js';
 import { createMockSource } from './source.js';
 import { HandInput } from './hands.js';
+import { Assistant } from './assistant.js';
 import { C } from './theme.js';
 
 const msg = document.getElementById('msg');
@@ -11,10 +12,56 @@ const enterBtn = document.getElementById('enter');
 
 // ---- data + panels -------------------------------------------------------
 const source = createMockSource();
-const actions = { ...source.actions, recenter: () => place() };
 const panels = panelDefs.map(d => new Panel(d));
 const byId = Object.fromEntries(panels.map(p => [p.id, p]));
 source.subscribe(() => panels.forEach(p => p.invalidate()));
+
+// ---- assistant (local LLM via bridge) ------------------------------------
+const findContact = q => source.state.contacts.find(c => c.name === q || q.includes(c.name) || c.number === q);
+const describe = ({ name, args }) => name === 'make_call' ? `${args.name} に発信しますか？`
+  : `${args.to} に返信: 「${args.text}」を送りますか？`;
+function execute({ name, args }) {
+  const s = source.state, a = source.actions;
+  switch (name) {
+    case 'make_call': {
+      const q = String(args.name || ''), c = findContact(q);
+      const number = c?.number ?? (/^[\d\-+*#]{3,}$/.test(q) ? q : null);
+      if (!number) return `連絡先「${q}」が見つかりません`;
+      a.call(number); return `${c?.name ?? number} に発信しました`;
+    }
+    case 'hang_up': a.hangup(); return '通話を終了しました';
+    case 'answer_call': a.answer(); return '応答しました';
+    case 'decline_call': a.decline(); return '拒否しました';
+    case 'reply_message': {
+      const to = String(args.to || ''), text = String(args.text || '').slice(0, 200);
+      const m = s.messages.find(m => !m.own && (m.from === to || to.includes(m.from) || m.from.includes(to)));
+      if (!m || !text) return `「${to}」のメッセージが見つかりません`;
+      a.reply(text, m.id); return `${m.from} に返信しました`;
+    }
+    default: return `未対応の操作: ${name}`;
+  }
+}
+const assistant = new Assistant({
+  onChange: () => byId.assistant?.invalidate(),
+  describe, execute,
+  getContext: () => {
+    const s = source.state;
+    return {
+      time: s.now.toLocaleString('ja-JP'),
+      contacts: s.contacts.map(c => c.name),
+      incomingCall: s.phone.incoming?.name ?? null,
+      activeCall: s.phone.active?.name ?? null,
+      recentCalls: s.phone.recent.map(r => `${r.name}(${r.dir})`),
+      messages: s.messages.filter(m => !m.own).slice(0, 5).map(m => ({ from: m.from, text: m.text, unread: !m.read })),
+      watch: { heartRate: s.watch.hr, steps: s.watch.steps, battery: s.watch.battery, spo2: s.watch.spo2 },
+    };
+  },
+});
+source.state.assistant = assistant.state;
+const actions = { ...source.actions, recenter: () => place(),
+  toggleMic: () => assistant.toggleMic(), confirmPending: () => assistant.confirmPending(), cancelPending: () => assistant.cancelPending() };
+const cmd = document.getElementById('cmd');
+cmd.addEventListener('keydown', e => { if (e.key === 'Enter') { assistant.ask(cmd.value); cmd.value = ''; } e.stopPropagation(); });
 
 // ---- three.js ------------------------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -47,7 +94,7 @@ byId.home.mesh.add(reactor);
 
 // ---- head pose + layout --------------------------------------------------
 const head = { pos: new THREE.Vector3(0, 1.6, 0.35), fwd: new THREE.Vector3(0, 0, -1) };
-const ARC = { watch: [-72, 0.0, 0.8], phone: [-36, 0.0, 0.75], home: [0, 0.07, 0.8], messages: [38, 0.0, 0.75], incoming: [0, -0.2, 0.55] };
+const ARC = { watch: [-72, 0.0, 0.8], phone: [-36, 0.0, 0.75], home: [0, 0.07, 0.8], messages: [38, 0.0, 0.75], assistant: [0, -0.3, 0.72], incoming: [0, -0.2, 0.5] };
 
 function place() {
   const fwd = head.fwd.clone().setY(0).normalize();
@@ -108,6 +155,7 @@ let framesInXR = 0;
 renderer.xr.addEventListener('sessionend', () => { enterBtn.style.display = ''; scene.background = new THREE.Color(0x02060c); });
 enterBtn.addEventListener('click', async () => {
   if (!navigator.xr) { msg.textContent = 'WebXR非対応です。デスクトップではマウスで操作できます（C:着信, M:メッセージ）。'; return; }
+  if (assistant.state.stt) await navigator.mediaDevices?.getUserMedia({ audio: true }).then(st => { assistant.stream = st; }).catch(() => {});
   const ar = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
   try {
     const session = await navigator.xr.requestSession(ar ? 'immersive-ar' : 'immersive-vr',
