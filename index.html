@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QuestUI HUD</title>
+<link rel="icon" href="data:,">
+<style>
+  html,body{margin:0;height:100%;background:#02060c;overflow:hidden;font-family:"Noto Sans JP",sans-serif;color:#d6f6ff}
+  canvas{display:block}
+  #ui{position:fixed;left:50%;top:18px;transform:translateX(-50%);text-align:center}
+  #enter{font:600 18px "Noto Sans JP",sans-serif;letter-spacing:.2em;color:#4de8ff;background:rgba(6,20,34,.8);
+    border:1.5px solid #4de8ff;border-radius:8px;padding:14px 34px;cursor:pointer}
+  #enter:hover{background:rgba(77,232,255,.25)}
+  #msg{margin-top:10px;font-size:12px;color:#7fb4c4;max-width:80vw}
+</style>
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}
+</script>
+</head>
+<body>
+<div id="ui"><button id="enter">ENTER HUD</button><div id="msg"></div></div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
